@@ -1,0 +1,294 @@
+---
+title: "Data Fest"
+author: "Anthony Brennan"
+date: "4/12/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+games <- read.csv("./games.csv")
+#gps <- read.csv("./gps.csv")
+rpe <- read.csv("./rpe.csv")
+wellness <- read.csv("./wellness.csv")
+distance <- read.csv("./distance-data.csv")
+
+```
+
+
+```{r}
+library(dplyr)
+#gps1 <- gps %>%
+#  filter(PlayerID != c(18:20))
+#gpsNA <- gps %>%
+#  filter(!is.na(Longitude))
+games1 <- merge(games, distance, by = "Tournament")
+health <- wellness %>%
+  select(Date, Pain, Illness) 
+health$Pain <- recode(health$Pain, No = 0, Yes = 1)
+
+fatigue <- aggregate(Fatigue ~ Date, wellness, mean)
+sore <- aggregate(Soreness ~ Date, wellness, mean)
+desire <- aggregate(Desire ~ Date, wellness, mean)
+irr <- aggregate(Irritability ~ Date, wellness, mean)
+sleep <- aggregate(SleepHours ~ Date, wellness, mean)
+usg <- aggregate(USG ~ Date, wellness, mean)
+daily.load <- aggregate(DailyLoad ~ Date, rpe, mean)
+acute <- aggregate(AcuteLoad ~ Date, rpe, mean)
+chronic <- aggregate(ChronicLoad ~ Date, rpe, mean)
+ratio <- aggregate(AcuteChronicRatio ~ Date, rpe, mean)
+objective <- aggregate(ObjectiveRating ~ Date, rpe, mean)
+focus <- aggregate(FocusRating ~ Date, rpe, mean)
+pain <- aggregate(Pain ~ Date, health, mean)
+
+well.mean <- left_join(fatigue, sore, by = "Date")
+well.mean <- left_join(well.mean, desire, by = "Date")
+well.mean <- left_join(well.mean, irr, by = "Date")
+well.mean <- left_join(well.mean, sleep, by = "Date")
+well.mean <- left_join(well.mean, usg, by = "Date")
+well.mean <- left_join(well.mean, daily.load, by = "Date")
+well.mean <- left_join(well.mean, acute, by = "Date")
+well.mean <- left_join(well.mean, chronic, by = "Date")
+well.mean <- left_join(well.mean, ratio, by = "Date")
+well.mean <- left_join(well.mean, objective, by = "Date")
+well.mean <- left_join(well.mean, focus, by = "Date")
+well.mean <- left_join(well.mean, pain, by = "Date")
+
+
+total <- left_join(wellness, rpe, by = c("Date", "PlayerID"))
+total$Pain <- recode(total$Pain, No = 0, Yes = 1)
+
+plot(c(1:354), well.mean$Fatigue, type = "l")
+which.min(well.mean$Fatigue)
+```
+Ignore
+```{r}
+Arrival <- c(6, 9, 7, 4, 5, 5)
+Tournament <- c("Dubai", "Sydney", "Commonwealth", "Kitakyushu", "Paris", "World Cup")
+days <- data.frame(Tournament, Arrival)
+games1 <- left_join(games1, days, by = "Tournament")
+speed <- aggregate(Speed ~ GameID, gps, mean)
+games1 <- left_join(games1, speed, by = "GameID")
+games1 <- games1 %>%
+  mutate(Spread = TeamPoints - TeamPointsAllowed)
+
+plot(c(1:38), games1$Speed.x, type = "l", col = "red")
+par(new = TRUE)
+plot(c(1:38), games1$Distance, type = "l", col = "blue")
+
+plot(c(1:354), well.mean$SleepHours, type = "l", col = "red")
+par(new = TRUE)
+plot(c(1:354), well.mean$DailyLoad, type = "l", col = "blue")
+
+summary(lm(games1$Distance ~ games1$Distance))
+
+plot(c(1:38), games1$Arrival, type = "l", col = "red")
+par(new = TRUE)
+plot(c(1:38), games1$Speed.x, type = "l", col = "blue")
+
+summary(lm(games1$Speed.x ~ games1$Distance))
+summary(lm(games1$Speed.x ~ games1$Arrival))
+```
+
+```{r}
+plot(c(1:354), well.mean$SleepHours, type = "l")
+which.min(well.mean$SleepHours)
+
+summary(lm(well.mean$Fatigue ~ well.mean$SleepHours))
+summary(lm(well.mean$Soreness ~ well.mean$SleepHours))
+summary(lm(well.mean$Desire ~ well.mean$SleepHours))
+summary(lm(well.mean$Irritability ~ well.mean$SleepHours))
+summary(lm(well.mean$USG ~ well.mean$SleepHours))
+summary(lm(well.mean$Fatigue ~ well.mean$SleepHours))
+
+summary(lm(well.mean$Fatigue ~ well.mean$AcuteLoad))
+summary(lm(well.mean$Soreness ~ well.mean$AcuteLoad))
+summary(lm(well.mean$Desire ~ well.mean$AcuteLoad))
+summary(lm(well.mean$Irritability ~ well.mean$AcuteLoad))
+summary(lm(well.mean$USG ~ well.mean$AcuteLoad))
+summary(lm(well.mean$SleepHours ~ well.mean$AcuteLoad))
+```
+
+```{r}
+Dubai <- well.mean[c(110:124),]
+Sydney <- well.mean[c(168:182),]
+Commonwealth <- well.mean[c(244:258),]
+Kitakyushu <- well.mean[c(251:265),]
+Paris <- well.mean[c(300:314),]
+WorldCup <- well.mean[c(340:354),]
+Langford <- well.mean[c(272:286),]
+
+
+plot(c(1:15), Dubai$FocusRating, type = "l", col = "red", ylim = c(7, 10)) 
+lines(c(1:15), Sydney$FocusRating, col = "orange")        
+lines(c(1:15), Commonwealth$FocusRating, col = "yellow")  
+lines(c(1:15), Kitakyushu$FocusRating, col = "green")     
+lines(c(1:15), Paris$FocusRating, col = "blue")           
+lines(c(1:15), WorldCup$FocusRating, col = "purple")      
+#6-7300  Fat-4 Irr-4 USG-1
+#9-7776  Fat-3 Irr-3 USG-6
+#7-7392  Fat-2 Irr-2 USG-2
+#4-4535  Fat-6 Irr-6 USG-3
+#5-4930  Fat-5 Irr-4 USG-5
+#5- 801  Fat-1 Irr-1 USG-4
+```
+
+
+```{r}
+Dubai1 <- well.mean[c(111:124),]
+Sydney1 <- well.mean[c(168:182),]
+Commonwealth1 <- well.mean[c(244:258),]
+Kitakyushu1 <- well.mean[c(252:265),]
+Paris1 <- well.mean[c(300:314),]
+WorldCup1 <- well.mean[c(342:354),]
+Langford1 <- well.mean[c(273:286),]
+
+
+plot(c(-11:2), Dubai1$Fatigue, type = "l", col = "orange", ylim = c(2, 5), ylab = "Fatigue") 
+lines(c(-11:3), Sydney1$Fatigue, col = "red")        
+lines(c(-11:3), Commonwealth1$Fatigue, col = "black")  
+lines(c(-11:2), Kitakyushu1$Fatigue, col = "blue")     
+lines(c(-11:2), Langford1$Fatigue, col = "yellow")
+lines(c(-11:3), Paris1$Fatigue, col = "purple")           
+lines(c(-11:1), WorldCup1$Fatigue, col = "green")
+abline(v = 0)
+legend("topleft", legend=c("Dubai", "Sydney", "Gold Coast", "Kitakyushu", "Langford", "Paris", "San Francisco"), col=c("orange", "red", "black", "blue", "yellow", "purple", "green"), lty = 1, cex = 0.6, pt.cex = 1)
+
+plot(c(-11:2), Dubai1$Irritability, type = "l", col = "orange", ylim = c(3, 5), ylab = "Irritability") 
+lines(c(-11:3), Sydney1$Irritability, col = "red")        
+lines(c(-11:3), Commonwealth1$Irritability, col = "black")  
+lines(c(-11:2), Kitakyushu1$Irritability, col = "blue")     
+lines(c(-11:2), Langford1$Irritability, col = "yellow")
+lines(c(-11:3), Paris1$Irritability, col = "purple")           
+lines(c(-11:1), WorldCup1$Irritability, col = "green")
+abline(v = 0)
+legend("topleft", legend=c("Dubai", "Sydney", "Gold Coast", "Kitakyushu", "Langford", "Paris", "San Francisco"), col=c("orange", "red", "black", "blue", "yellow", "purple", "green"), lty = 1, cex = 0.6, pt.cex = 1)
+
+plot(c(-11:2), Dubai1$SleepHours, type = "l", col = "orange", ylim = c(5, 10), ylab = "Sleep Hours") 
+lines(c(-11:3), Sydney1$SleepHours, col = "red")        
+lines(c(-11:3), Commonwealth1$SleepHours, col = "black")  
+lines(c(-11:2), Kitakyushu1$SleepHours, col = "blue")     
+lines(c(-11:2), Langford1$SleepHours, col = "yellow")
+lines(c(-11:3), Paris1$SleepHours, col = "purple")           
+lines(c(-11:1), WorldCup1$SleepHours, col = "green")
+abline(v = 0)
+legend("bottomleft", legend=c("Dubai", "Sydney", "Gold Coast", "Kitakyushu", "Langford", "Paris", "San Francisco"), col=c("orange", "red", "black", "blue", "yellow", "purple", "green"), lty = 1, cex = 0.6, pt.cex = 1)
+
+plot(c(-11:2), Dubai1$Soreness, type = "l", col = "orange", ylim = c(2, 5), ylab = "Soreness") 
+lines(c(-11:3), Sydney1$Soreness, col = "red")        
+lines(c(-11:3), Commonwealth1$Soreness, col = "black")  
+lines(c(-11:2), Kitakyushu1$Soreness, col = "blue")     
+lines(c(-11:2), Langford1$Soreness, col = "yellow")
+lines(c(-11:3), Paris1$Soreness, col = "purple")           
+lines(c(-11:1), WorldCup1$Soreness, col = "green")
+abline(v = 0)
+legend("topleft", legend=c("Dubai", "Sydney", "Gold Coast", "Kitakyushu", "Paris", "San Francisco", "Langford"), col=c("red", "orange", "yellow", "green", "blue", "purple", "black"), lty = 1, cex = 0.6, pt.cex = 1)
+
+plot(c(-11:2), Dubai1$Desire, type = "l", col = "orange", ylim = c(2.5, 5.5), ylab = "Desire") 
+lines(c(-11:3), Sydney1$Desire, col = "red")        
+lines(c(-11:3), Commonwealth1$Desire, col = "black")  
+lines(c(-11:2), Kitakyushu1$Desire, col = "blue")     
+lines(c(-11:2), Langford1$Desire, col = "yellow")
+lines(c(-11:3), Paris1$Desire, col = "purple")           
+lines(c(-11:1), WorldCup1$Desire, col = "green")
+abline(v = 0)
+legend("bottomleft", legend=c("Dubai", "Sydney", "Gold Coast", "Kitakyushu", "Langford", "Paris", "San Francisco"), col=c("orange", "red", "black", "blue", "yellow", "purple", "green"), lty = 1, cex = 0.6, pt.cex = 1)
+
+#6-7300-8.17  6  1.053
+#9-7776-9.33  6  1.034
+#5-7392--1.4  5  1.023
+#4-4535-4.40  5  1.182
+#5-4930-0.00  6  1.063
+#5- 801-4.75  4  1.083
+#0-   0-6.50  6  1.174
+
+
+```
+
+```{r}
+Dubai2 <- well.mean[c(119:143),]
+Sydney2 <- well.mean[c(177:201),]
+Commonwealth2 <- well.mean[c(253:277),]
+Kitakyushu2 <- well.mean[c(260:284),]
+Paris2 <- well.mean[c(309:333),]
+#WorldCup2 <- well.mean[c(342:354),]
+Langford2 <- well.mean[c(281:305),]
+
+
+plot(c(-5:19), Dubai2$Pain, type = "l", col = "red", ylim = c(0, 1)) 
+lines(c(-5:19), Sydney2$Pain, col = "orange")        
+lines(c(-5:19), Commonwealth2$Pain, col = "yellow")  
+lines(c(-5:19), Kitakyushu2$Pain, col = "green")     
+lines(c(-5:19), Paris2$Pain, col = "blue")           
+lines(c(-5:19), Langford2$Pain, col = "black")
+abline(v = 0)
+legend("topleft", legend=c("Dubai", "Sydney", "Gold Coast", "Kitakyushu", "Paris", "Langford"), col=c("red", "orange", "yellow", "green", "blue", "black"), lty = 1, cex = 0.6, pt.cex = 1)
+
+plot(c(-5:19), Dubai2$Soreness, type = "l", col = "red", ylim = c(2, 5)) 
+lines(c(-5:19), Sydney2$Soreness, col = "orange")        
+lines(c(-5:19), Commonwealth2$Soreness, col = "yellow")  
+lines(c(-5:19), Kitakyushu2$Soreness, col = "green")     
+lines(c(-5:19), Paris2$Soreness, col = "blue")           
+lines(c(-5:19), Langford2$Soreness, col = "black")
+abline(v = 0)
+legend("topleft", legend=c("Dubai", "Sydney", "Gold Coast", "Kitakyushu", "Paris", "Langford"), col=c("red", "orange", "yellow", "green", "blue", "black"), lty = 1, cex = 0.6, pt.cex = 1)
+
+#6-7300-8.17  6  1.053
+#9-7776-9.33  6  1.034
+#7-7392--1.4  5  1.023
+#4-4535-4.40  5  1.182
+#5-4930-0.00  6  1.063
+######################5- 801-4.75  4  1.083
+#0-   0-6.50  6  1.174
+```
+
+```{r}
+library(leaps)
+#Subjective
+#summary(lm(Pain ~ Fatigue + Soreness + Irritability + SleepQuality + RPE + ObjectiveRating + FocusRating, data = total))
+
+glm.fit <- glm(Pain ~ Fatigue + Soreness + SleepQuality + RPE + ObjectiveRating, data = total, family = binomial)
+summary(glm.fit)
+glm.probs <- predict(glm.fit,type = "response")
+summary(glm.probs)
+
+#Objective
+#summary(lm(Pain ~ SleepHours + Duration + SessionLoad + DailyLoad + AcuteLoad + ChronicLoad + AcuteChronicRatio, data = total))
+
+#injury <- regsubsets(Pain ~ Fatigue + Soreness + Desire + Irritability + SleepQuality + RPE + ObjectiveRating + FocusRating, data = total)
+#injury <- regsubsets(Pain ~ Fatigue + Soreness + Irritability + SleepQuality + RPE + ObjectiveRating + FocusRating, data = total)
+#plot(injury,scale = "Cp")
+#plot(injury,scale = "bic")
+#plot(injury,scale = "adjr2")
+
+library(tree)
+tree <- tree(Pain ~ Fatigue + Soreness + Irritability + SleepQuality + RPE + FocusRating + SleepHours + Duration, data = total)
+summary(tree)
+plot(tree)
+text(tree, pretty = 0)
+
+
+```
+
+```{r}
+summary(lm(Pain ~ Fatigue + SleepHours + DailyLoad + ChronicLoad + ObjectiveRating + FocusRating, data = well.mean))
+summary(lm(Soreness ~ Fatigue + Desire + SleepHours + DailyLoad + AcuteLoad + ChronicLoad + AcuteChronicRatio + FocusRating, data = well.mean))
+injury <- regsubsets(Pain ~ Fatigue + SleepHours + DailyLoad + ChronicLoad + ObjectiveRating + FocusRating, data = well.mean)
+sore <- regsubsets(Soreness ~ Fatigue + Desire + SleepHours + DailyLoad + AcuteLoad + ChronicLoad + AcuteChronicRatio + FocusRating, data = well.mean)
+plot(injury,scale = "Cp")
+plot(injury,scale = "bic")
+plot(injury,scale = "adjr2")
+plot(sore,scale = "Cp")
+plot(sore,scale = "bic")
+plot(sore,scale = "adjr2")
+
+```
+
+
+
+
+
+
